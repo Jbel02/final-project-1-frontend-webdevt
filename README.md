@@ -1,17 +1,27 @@
-# SuiteSpot — Hotel Reservation & Booking System
+# SuiteSpot — Frontend (Hotel Reservation & Booking System)
 
 Final project, **Group 1 · C3A** — Cortez, Cedric · Elpedes, Dustin · Maliñana, Johnbel
 
-A full-stack MERN app for an 80-room hotel (8 floors × 10 rooms; Single, Double, King and
-Suite): guests search by date, price and capacity and book rooms; the front desk checks guests in
-and out; the manager runs rooms, bookings and accounts.
+The React app for SuiteSpot, an 80-room hotel reservation system (8 floors × 10 rooms; Single,
+Double, King and Suite): guests search by date, price and capacity and book rooms; the front desk
+checks guests in and out; the manager runs rooms, bookings and accounts.
+
+| | |
+| --- | --- |
+| **Frontend (live)** | `https://finals-project-webdevt.vercel.app/rooms` |
+| **Backend repository** | https://github.com/Jbel02/final-project-1-backend-webdevt |
+| **Backend (live)** | https://suitespot-api.onrender.com — [`/api/health`](https://suitespot-api.onrender.com/api/health) |
 
 The interface carries over the iOS design language of `midterm-project-webdevt` — the same system
 colours, type scale, fonts, translucent nav bar and tab bar, action sheets, spring transitions and
 the Desktop / iPad / iPhone preview frame.
 
+**Stack:** React 19, Vite, Tailwind CSS v4, React Router, Axios, Context API. Hosted on Vercel.
+
 > **Proposal tracking:** every item of `final-project-proposal-G1.pdf`, every gap we found, every
-> default we chose and every addition is listed in [`docs/CHECKLIST.md`](docs/CHECKLIST.md).
+> default we chose and every addition is listed in [`docs/CHECKLIST.md`](docs/CHECKLIST.md). The
+> server-side items are built in the backend repository.
+
 ## Team
 
 | Member | Owns |
@@ -33,23 +43,34 @@ Work is done on branches and merged through reviewed pull requests.
 
 ## Quick start
 
-Requires **Node.js 20+**.
+Requires **Node.js 20+**. The app needs the API, so clone both repositories side by side:
+
+```
+final-project-1-frontend-webdevt/     (this repo)
+final-project-1-backend-webdevt/
+```
+
+**1. Start the API** (see the backend README for options):
 
 ```bash
+cd final-project-1-backend-webdevt
 npm run install:all
 npm run dev
 ```
 
-Open http://localhost:5173.
+It runs on http://localhost:5000. Without a `MONGODB_URI` it starts an in-memory database and
+seeds it, so no database setup is needed.
 
-No database setup is needed for development: without `MONGODB_URI` the API starts an
-**in-memory MongoDB** and seeds it (the first run downloads a ~600 MB MongoDB binary once). The
-data resets whenever the API restarts — including when you edit server code — and you'll be
-signed out when that happens.
+**2. Start the frontend** in a second terminal:
 
-To use a real database instead, copy `server/.env.example` to `server/.env` and set
-`MONGODB_URI` to your Atlas connection string. Run `npm run seed` once to load demo data (it asks
-before wiping anything).
+```bash
+cd final-project-1-frontend-webdevt
+npm run install:all
+npm run dev
+```
+
+Open http://localhost:5173. The dev server forwards `/api` to the API on port 5000. If you
+restart the API, the in-memory data resets and you'll be signed out.
 
 ### Demo accounts (seeded test data)
 
@@ -60,44 +81,29 @@ before wiping anything).
 | Guest | guest@suitespot.test | Guest1234 |
 | Guest | maria@suitespot.test, ana@…, carlo@… | Guest1234 |
 
-These accounts work on the deployed site as well as locally. If the live Manager password ever
-stops matching this table, `npm run reset-manager-password` restores it without touching any other
-data (see [Deployment](#deployment-vercel--render--mongodb-atlas)).
-
-Seeded bookings are placed relative to today, so there is always a guest checked in, one arriving
-today, one leaving today, plus past, future and cancelled stays.
+These accounts work on the live site as well as locally. Seeded bookings are placed relative to
+today, so there is always a guest checked in, one arriving today, one leaving today, plus past,
+future and cancelled stays.
 
 ### Scripts (run from the repo root)
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` | API (port 5000) + Vite (port 5173) together |
-| `npm test` | Server tests (109, incl. a 76-case role matrix) + client tests |
+| `npm run dev` | Vite dev server on port 5173 |
+| `npm test` | Client tests |
 | `npm run lint` | ESLint over the client |
-| `npm run build` | Production build of the client into `client/dist` |
-| `npm run seed` | Reset the database in `MONGODB_URI` to demo data |
-| `npm run reset-manager-password` | Set the demo Manager's password (default `Manager123`) in `MONGODB_URI`, without wiping data |
+| `npm run build` | Production build into `client/dist` |
 
 ---
 
 ## Project map
 
-The code is organised so it can be split by role. Every slice uses the same shared pieces.
-
 ```
-shared/                 rules used by BOTH client and server (no dependencies)
+shared/                 rules used by BOTH repositories (no dependencies)
   constants.js            room types, prices, meal rates, statuses
   dates.js                date-only helpers, hotel time zone, overlap rule
   pricing.js              quoteBooking() — the one place a bill is computed
   validation.js           every form's validator (frontend + backend validation)
-
-server/                 Express + Mongoose API
-  src/models/             User, Room, Booking
-  src/middleware/         auth (JWT cookie, requireRole), errors
-  src/routes/             auth.js · rooms.js · bookings.js · users.js
-  src/services/           availability.js (date-overlap availability)
-  src/seed/               80 rooms, demo accounts, demo bookings
-  test/                   Supertest + in-memory replica set
 
 client/                 React (Vite) + Tailwind
   src/api/                one function per endpoint (Axios)
@@ -111,47 +117,30 @@ client/                 React (Vite) + Tailwind
   src/styles/             tokens.css (midterm), components.css (iOS primitives), device.css
 ```
 
-Possible three-way split:
-
-| Slice | Client | Server |
-| --- | --- | --- |
-| **Guest** | `pages/auth`, `pages/rooms/BrowseRooms`, `RoomDetail`, `BookRoom`, `pages/bookings/MyBookings`, `Profile` | `routes/auth.js`, `POST /bookings`, `GET /bookings/mine`, `PATCH /users/me` |
-| **Front desk** | `pages/bookings/FrontDesk`, `BookingDetail`, `components/Receipt` | `GET /bookings`, check-in / check-out / cancel, `services/availability.js` |
-| **Manager** | `pages/rooms/ManageRooms`, `RoomEditor`, `pages/users/*` | `routes/rooms.js`, `routes/users.js`, `seed/` |
+> `shared/` is mirrored in the backend repository, because both sides run the same rules. If you
+> change a file there, change it in both repositories.
 
 ---
 
 ## How it works
 
 **Authentication.** Login sets a JWT in an **httpOnly cookie** — page scripts never see the
-token. Every request re-reads the account, so deactivating someone signs them out immediately.
-Passwords are hashed with bcrypt. Self-registration always creates a guest; receptionists are
-created by the manager.
-
-**Authorization.** `requireRole('manager')` and friends guard every route on the server. The
-client hides screens a role can't use (`RequireRole`), but that's a courtesy — the server is the
-gate, and `server/test/permissions.test.js` checks all 19 proposal endpoints against all four
-kinds of caller.
+token. The client hides screens a role can't use (`RequireRole`), but that's a courtesy: the API is
+the gate, and the backend's permission tests check every endpoint against every kind of caller.
 
 **Validation, twice.** Each form runs a validator from `shared/validation.js` as you type (a
 field's message appears after you leave it or submit). The server runs **the same function**
 again and returns per-field messages, which appear in the same place.
 
-**Availability.** No "rooms left" counters: a room is free for a stay when no active booking for
-it overlaps the dates (check-out day is free for the next guest). Creating a booking runs inside
-a MongoDB transaction that also writes the room document, so two guests booking the same room at
-the same moment can't both succeed — there's a test that fires both requests at once.
-
 **Money.** The booking form and the server both price a stay with `quoteBooking()`; the server
 never trusts amounts sent by the browser. Partial payment is 30% now, with the balance settled at
-check-out. Each booking stores a snapshot of the room and guest, so receipts stay correct after a
-price change or a deletion.
+check-out.
 
 **Receipts.** "Print Receipt" calls `window.print()`. A print-only receipt is portalled into
 `<body>`, outside the phone frame; print CSS hides everything else.
 
 **Dates.** Stays are calendar dates stored as UTC midnight, and "today" is the hotel's day in
-Asia/Manila — so a server running in UTC never thinks it's still yesterday.
+Asia/Manila.
 
 ---
 
@@ -173,30 +162,14 @@ Asia/Manila — so a server running in UTC never thinks it's still yesterday.
 
 ---
 
-## Deployment (Vercel + Render + MongoDB Atlas)
+## Deployment (Vercel)
 
-Hosting isn't specified in the proposal; this setup is an addition (see the checklist).
+Hosting isn't specified in the proposal; this setup is an addition (see the checklist). The API
+and database are described in the backend README (Render + MongoDB Atlas).
 
-1. **Atlas** — create a free cluster and a database user, allow access from `0.0.0.0/0`, and
-   copy the connection string.
-2. **Render** — New → Blueprint → select this repo (`render.yaml`). Set `MONGODB_URI`.
-   `JWT_SECRET` is generated for you. The empty database seeds itself on first start. Optionally
-   set `SEED_MANAGER_PASSWORD` to give the first seed a private Manager password; it only applies
-   while the database is empty.
-
-   The submitted demo uses the README password for the Manager so it can be graded. To set it
-   on an already-seeded database, run this from your computer with the production connection
-   string (PowerShell shown) and answer `y`:
-
-   ```powershell
-   $env:MONGODB_URI = "<your Atlas connection string>"
-   npm run reset-manager-password
-   ```
-
-   After grading, `npm run reset-manager-password -- "<a private password>"` locks it down again.
-3. **Vercel** — import the repo with the repo root as the root directory; `vercel.json` builds
-   `client/` and forwards `/api/*` to Render. If Render assigned a URL other than
-   `https://suitespot-api.onrender.com`, update it in `vercel.json`.
+**Vercel** — import this repo with the repo root as the root directory and the Application Preset
+set to **Other**. `vercel.json` builds `client/` and forwards `/api/*` to the API on Render. If
+Render assigned a URL other than `https://suitespot-api.onrender.com`, update it in `vercel.json`.
 
 The browser only ever talks to the Vercel domain, so the auth cookie is first-party everywhere
 (Safari blocks cross-site cookies). Render's free tier sleeps when idle — open the site a minute

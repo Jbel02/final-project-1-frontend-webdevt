@@ -3,6 +3,10 @@
 Tracks every item in `final-project-proposal-G1.pdf` against the build, plus every gap,
 default and addition. Nothing from the proposal is dropped; anything beyond it is marked ➕.
 
+> **Two repositories.** The project is submitted as `final-project-1-frontend-webdevt` (React, this
+> repo) and `final-project-1-backend-webdevt` (Express API, tests and seed). Paths below that start
+> with `server/` live in the backend repository. `shared/` is mirrored in both.
+
 | Mark | Meaning |
 | --- | --- |
 | ✅ | Built and verified (automated test and/or clicked through in the browser) |
