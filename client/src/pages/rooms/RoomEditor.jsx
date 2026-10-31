@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion } from 'motion/react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ROOM_TYPE_DEFAULTS, ROOM_TYPES, TOTAL_FLOORS } from '@shared/constants.js'
@@ -44,34 +45,45 @@ export default function RoomEditor() {
   const { id } = useParams()
   const { data, error, reload } = useApi(() => (id ? roomsApi.get(id) : Promise.resolve(null)), [id])
 
-  if (!id) return <RoomForm initial={NEW_ROOM} />
-  if (error || !data) {
-    return (
-      <Page title="Edit Room" leading={<CancelButton fallback="/rooms" />}>
-        {error ? <LoadError error={error} onRetry={reload} /> : <LoadingRows count={6} />}
-      </Page>
-    )
-  }
-  return <RoomForm initial={data.room} roomId={id} />
+  // One RoomForm — and so one <Page> — from the first frame. If the loading
+  // screen and the form each rendered their own page, the sheet would be
+  // rebuilt when the room arrives and rise from the bottom a second time.
+  return (
+    <RoomForm
+      initial={id ? data?.room : NEW_ROOM}
+      roomId={id}
+      error={error}
+      onRetry={reload}
+    />
+  )
 }
 
-function RoomForm({ initial, roomId }) {
+const formValuesOf = (room) => ({
+  roomNumber: room.roomNumber,
+  floor: room.floor,
+  type: room.type,
+  pricePerNight: String(room.pricePerNight),
+  maxOccupancy: room.maxOccupancy,
+  photoUrl: room.photoUrl ?? '',
+  status: room.status,
+})
+
+/** `initial` is undefined while an existing room is still loading. */
+function RoomForm({ initial, roomId, error, onRetry }) {
   const navigate = useNavigate()
   const isNew = !roomId
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
-  const form = useForm(
-    {
-      roomNumber: initial.roomNumber,
-      floor: initial.floor,
-      type: initial.type,
-      pricePerNight: String(initial.pricePerNight),
-      maxOccupancy: initial.maxOccupancy,
-      photoUrl: initial.photoUrl ?? '',
-      status: initial.status,
-    },
-    validateRoom,
-  )
+  const form = useForm(formValuesOf(initial ?? NEW_ROOM), validateRoom)
   const { values, errors, setField } = form
+
+  // The room arrives after the first render when editing, so its values are
+  // swapped in the moment it does (derived during render, like the route
+  // direction in AnimatedRoutes, so the form never paints stale values).
+  const [syncedRoom, setSyncedRoom] = useState(initial)
+  if (initial && initial !== syncedRoom) {
+    setSyncedRoom(initial)
+    form.setValues(formValuesOf(initial))
+  }
 
   // A new room starts from its type's usual rate and capacity; an existing
   // room keeps whatever the manager set.
@@ -116,13 +128,29 @@ function RoomForm({ initial, roomId }) {
           type="submit"
           form="room-form"
           className="bar-button bar-button--strong bar-button--floating"
-          disabled={form.isSubmitting}
+          disabled={form.isSubmitting || !initial}
         >
           {isNew ? 'Add' : 'Save'}
         </button>
       }
     >
-      <form id="room-form" onSubmit={handleSubmit} noValidate>
+      {error ? (
+        <LoadError error={error} onRetry={onRetry} />
+      ) : (
+        !initial && <LoadingRows count={6} />
+      )}
+
+      {/* Kept mounted but hidden while loading, so the page around it never
+          changes; it fades in when the room arrives. */}
+      <motion.form
+        id="room-form"
+        hidden={Boolean(error) || !initial}
+        initial={initial ? false : { opacity: 0 }}
+        animate={{ opacity: initial ? 1 : 0 }}
+        transition={{ duration: 0.16 }}
+        onSubmit={handleSubmit}
+        noValidate
+      >
         <div className="group overflow-hidden rounded-card">
           <RoomPhoto src={values.photoUrl.trim()} alt="Photo preview" className="aspect-[16/9]" />
         </div>
@@ -232,11 +260,11 @@ function RoomForm({ initial, roomId }) {
             Delete Room
           </button>
         )}
-      </form>
+      </motion.form>
 
       <ActionSheet
         open={isConfirmingDelete}
-        title={`Delete Room ${initial.roomNumber}? Past bookings keep their receipts. This can’t be undone.`}
+        title={`Delete Room ${initial?.roomNumber}? Past bookings keep their receipts. This can’t be undone.`}
         actions={[{ label: 'Delete Room', destructive: true, onSelect: handleDelete }]}
         onClose={() => setIsConfirmingDelete(false)}
       />
