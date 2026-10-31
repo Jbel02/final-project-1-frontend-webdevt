@@ -1,4 +1,5 @@
 import NumberFlow from '@number-flow/react'
+import { motion } from 'motion/react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { MEAL_PRICES } from '@shared/constants.js'
@@ -38,18 +39,21 @@ export default function BookRoom() {
   const { id } = useParams()
   const { data, error, reload } = useApi(() => roomsApi.get(id), [id])
 
-  return error ? (
+  // One <Page> for every state. If the loading screen and the form each
+  // rendered their own, the sheet would be rebuilt when the room arrives and
+  // rise from the bottom a second time.
+  return (
     <Page title="Book Room" leading={<CancelButton fallback={`/rooms/${id}`} />}>
-      <LoadError error={error} onRetry={reload} />
+      {error ? (
+        <LoadError error={error} onRetry={reload} />
+      ) : !data ? (
+        <LoadingRows count={5} />
+      ) : (
+        // Mounted only once the room is known, so the form starts with the
+        // room's real capacity instead of correcting itself after a load.
+        <BookingForm room={data.room} />
+      )}
     </Page>
-  ) : !data ? (
-    <Page title="Book Room" leading={<CancelButton fallback={`/rooms/${id}`} />}>
-      <LoadingRows count={5} />
-    </Page>
-  ) : (
-    // Mounted only once the room is known, so the form starts with the
-    // room's real capacity instead of correcting itself after a load.
-    <BookingForm room={data.room} />
   )
 }
 
@@ -108,7 +112,7 @@ function BookingForm({ room }) {
   }
 
   return (
-    <Page title="Book Room" leading={<CancelButton fallback={`/rooms/${room.id}`} />}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16 }}>
       <form onSubmit={handleSubmit} noValidate>
         <div className="group">
           <div className="card">
@@ -244,7 +248,7 @@ function BookingForm({ room }) {
           {form.isSubmitting ? 'Confirming…' : 'Confirm Booking'}
         </button>
       </form>
-    </Page>
+    </motion.div>
   )
 }
 
